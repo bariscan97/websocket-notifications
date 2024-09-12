@@ -19,7 +19,7 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case cl := <-h.Unregister:
-
+			close(cl.Message)
 			delete(h.Clients, cl.Username)
 		case cl := <-h.Register:
 
