@@ -59,7 +59,7 @@ func (h *Handler) JoinWs(c *gin.Context) {
 		return
 	}
 
-	username := c.Query("username")
+	username := c.Param("username")
 
 	cl := &Client{
 		Conn:     conn,
