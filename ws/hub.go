@@ -22,9 +22,7 @@ func (h *Hub) Run() {
 			close(cl.Message)
 			delete(h.Clients, cl.Username)
 		case cl := <-h.Register:
-
 			h.Clients[cl.Username] = cl
-
 		case m := <-h.Broadcast:
 			cl, ok := h.Clients[m.Username]
 			if ok {

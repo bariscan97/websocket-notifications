@@ -73,7 +73,8 @@ func (h *Handler) JoinWs(c *gin.Context) {
 	}
 
 	h.hub.Register <- cl
-	h.hub.Broadcast <- m
+
+	cl.Message <- m
 
 	go cl.writeMessage()
 	go cl.readMessage(h.hub)
