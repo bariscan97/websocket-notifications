@@ -47,6 +47,9 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 		})
 		return
 	}
+
+	h.cache.ResetUnreadCount(username)
+
 	c.JSON(http.StatusOK, gin.H{
 		"notifications": results,
 	})
@@ -71,8 +74,9 @@ func (h *Handler) JoinWs(c *gin.Context) {
 		UnreadCount: h.cache.GetUnreadCount(username),
 		Username:    username,
 	}
-
-	h.hub.Register <- cl
+	
+	
+	h.hub.Clients[username] = cl
 
 	cl.Message <- m
 

@@ -81,12 +81,11 @@ func Worker(cache cacherepo.IRedisClient, hub *ws.Hub) {
 		log.Fatalf("Failed to register a consumer: %v", err)
 	}
 
-	forever := make(chan bool)
-
 	go func() {
-		for d := range msgs {
+		for msg  := range msgs {
+			
 			var queueMessage QueueMessage
-			err := json.Unmarshal(d.Body, &queueMessage)
+			err := json.Unmarshal(msg.Body, &queueMessage)
 			if err != nil {
 				log.Printf("Failed to unmarshal JSON: %v", err)
 				continue
@@ -95,6 +94,7 @@ func Worker(cache cacherepo.IRedisClient, hub *ws.Hub) {
 			subscribers, err = cache.GetSubsByUsername(queueMessage.From)
 			if err != nil {
 				log.Printf("Error: %v", err.Error())
+				continue
 			}
 			for _, sub := range subscribers {
 				go func(subscriber string) {
@@ -109,11 +109,10 @@ func Worker(cache cacherepo.IRedisClient, hub *ws.Hub) {
 					}
 				}(sub)
 			}
+			
+			msg.Ack(true)
+			
 			fmt.Printf("Received a message: %+v\n", queueMessage)
 		}
 	}()
-
-	fmt.Println("Waiting for messages. To exit press CTRL+C")
-	<-forever
-
 }
