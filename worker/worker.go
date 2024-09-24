@@ -7,6 +7,7 @@ import (
 	"notifications/cacherepo"
 	"notifications/ws"
 	"os"
+
 	"github.com/rabbitmq/amqp091-go"
 )
 
@@ -18,11 +19,11 @@ type QueueMessage struct {
 func Worker(cache cacherepo.IRedisClient, hub *ws.Hub) {
 
 	connString := fmt.Sprintf("amqp://%s:%s@%s:%s/",
-			os.Getenv("RABBITMQ_USER"),
-			os.Getenv("RABBITMQ_PASSWORD"),
-			os.Getenv("RABBITMQ_HOST"),
-			os.Getenv("RABBITMQ_PORT"),
-	)	
+		os.Getenv("RABBITMQ_USER"),
+		os.Getenv("RABBITMQ_PASSWORD"),
+		os.Getenv("RABBITMQ_HOST"),
+		os.Getenv("RABBITMQ_PORT"),
+	)
 
 	conn, err := amqp091.Dial(connString)
 	if err != nil {
@@ -36,31 +37,31 @@ func Worker(cache cacherepo.IRedisClient, hub *ws.Hub) {
 	}
 	defer ch.Close()
 	err = ch.ExchangeDeclare(
-		"notifications",   // name
-		"fanout", // type
-		true,     // durable
-		false,    // auto-deleted
-		false,    // internal
-		false,    // no-wait
-		nil,      // arguments
+		"notifications", // name
+		"fanout",        // type
+		true,            // durable
+		false,           // auto-deleted
+		false,           // internal
+		false,           // no-wait
+		nil,             // arguments
 	)
 	if err != nil {
 		log.Fatalf("Failed to declare an exchange: %v", err)
 	}
 	q, err := ch.QueueDeclare(
-		"websocket",    // name
-		false, // durable
-		false, // delete when unused
-		true,  // exclusive
-		false, // no-wait
-		nil,   // arguments
+		"websocket", // name
+		false,       // durable
+		false,       // delete when unused
+		true,        // exclusive
+		false,       // no-wait
+		nil,         // arguments
 	)
 	if err != nil {
 		log.Fatalf("Failed to declare a queue: %v", err)
 	}
 	err = ch.QueueBind(
-		q.Name, // queue name
-		"",     // routing key
+		q.Name,          // queue name
+		"",              // routing key
 		"notifications", // exchange
 		false,
 		nil,
@@ -82,8 +83,8 @@ func Worker(cache cacherepo.IRedisClient, hub *ws.Hub) {
 	}
 
 	go func() {
-		for msg  := range msgs {
-			
+		for msg := range msgs {
+
 			var queueMessage QueueMessage
 			err := json.Unmarshal(msg.Body, &queueMessage)
 			if err != nil {
@@ -96,22 +97,22 @@ func Worker(cache cacherepo.IRedisClient, hub *ws.Hub) {
 				log.Printf("Error: %v", err.Error())
 				continue
 			}
-			for _, sub := range subscribers {
-				go func(subscriber string) {
-					cache.CreateNotification(map[string]interface{}{
-						"username": subscriber,
-						"from":     queueMessage.From,
-						"content":  queueMessage.Content,
-					})
-					hub.Broadcast <- &ws.Message{
-						UnreadCount: cache.GetUnreadCount(subscriber),
-						Username:    subscriber,
-					}
-				}(sub)
+			for _, subscriber := range subscribers {
+
+				cache.CreateNotification(map[string]interface{}{
+					"username": subscriber,
+					"from":     queueMessage.From,
+					"content":  queueMessage.Content,
+				})
+				hub.Broadcast <- &ws.Message{
+					UnreadCount: cache.GetUnreadCount(subscriber),
+					Username:    subscriber,
+				}
+
 			}
-			
+
 			msg.Ack(true)
-			
+
 			fmt.Printf("Received a message: %+v\n", queueMessage)
 		}
 	}()
