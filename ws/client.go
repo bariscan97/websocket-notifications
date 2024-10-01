@@ -39,6 +39,7 @@ func (c *Client) writeMessage() {
 
 	for {
 		message, ok := <-c.Message
+		
 		if !ok {
 			return
 		}

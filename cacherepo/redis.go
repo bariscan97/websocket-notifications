@@ -54,14 +54,11 @@ func (redisCli *RedisClient) GetNotifications(username string, page string) ([]m
 
 	for i := 1; i < len(resultArray); i++ {
 		doc, ok := resultArray[i].([]interface{})
-		var notification map[string]interface{}
+		notification := make(map[string]interface{})
 		if ok {
 			for j := 0; j < len(doc); j += 2 {
 				key, isKeyString := doc[j].(string)
 				value, isValueString := doc[j+1].(string)
-				if key == "username" {
-					continue
-				}
 				if isKeyString && isValueString {
 					notification[key] = value
 				}
