@@ -7,12 +7,13 @@ import (
 	"os"
 	"strconv"
 	"time"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 )
 
 type RedisClient struct {
-	Rdb *redis.Client
+	Rdb   *redis.Client
 	Queue chan *QueueMessage
 }
 
@@ -28,7 +29,7 @@ type IRedisClient interface {
 
 func NewCacheClient(rdb *redis.Client) *RedisClient {
 	return &RedisClient{
-		Rdb: rdb,
+		Rdb:   rdb,
 		Queue: make(chan *QueueMessage, 10),
 	}
 }
@@ -55,7 +56,7 @@ func (redisCli *RedisClient) GetNotifications(username string, page string) ([]m
 	result, _ := redisCli.Rdb.Do(ctx, "FT.SEARCH", "idx:notifications", query, "SORTBY", "created_at", "DESC", "LIMIT", strconv.Itoa(start*pageSize), strconv.Itoa(pageSize)).Result()
 
 	resultArray, _ := result.([]interface{})
-	
+
 	var notifications []map[string]interface{}
 
 	for i := 1; i < len(resultArray); i++ {
@@ -108,44 +109,44 @@ func (redisCli *RedisClient) GetSubsByUsername(username string) ([]string, error
 
 func (redisCli *RedisClient) NotifyQueue(hub *Hub) {
 	ticker := time.NewTicker(30 * time.Second)
-	defer func ()  {
+	defer func() {
 		ticker.Stop()
 		os.Exit(1)
 	}()
-	loop:
-		for {
-			select {
-			
-			case <-ticker.C:
-				if err := redisCli.Rdb.Ping(context.Background()).Err(); err != nil {
-					log.Printf("Error:  %v", err)
-					break loop
-				}
-			
-			case msg, ok := <- redisCli.Queue:
-				if !ok {
-					log.Println("QueueMessage channel closed")
-					break loop
-				}
-				var subscribers []string
-				subscribers, err := redisCli.GetSubsByUsername(msg.From)
-				if err != nil {
-					log.Printf("Error while getting subscribers %v", err)
-					continue
-				}
-				for _, subscriber := range subscribers {
-					redisCli.CreateNotification(map[string]interface{}{
-						"username": subscriber,
-						"from":     msg.From,
-						"content":  msg.Content,
-					})
-					
-					hub.Emitter <- &Emit{
-						User_slug: subscriber,
-					}
-				}
-			
+loop:
+	for {
+		select {
+
+		case <-ticker.C:
+			if err := redisCli.Rdb.Ping(context.Background()).Err(); err != nil {
+				log.Printf("Error:  %v", err)
+				break loop
 			}
+
+		case msg, ok := <-redisCli.Queue:
+			if !ok {
+				log.Println("QueueMessage channel closed")
+				break loop
+			}
+			var subscribers []string
+			subscribers, err := redisCli.GetSubsByUsername(msg.From)
+			if err != nil {
+				log.Printf("Error while getting subscribers %v", err)
+				continue
+			}
+			for _, subscriber := range subscribers {
+				redisCli.CreateNotification(map[string]interface{}{
+					"username": subscriber,
+					"from":     msg.From,
+					"content":  msg.Content,
+				})
+
+				hub.Emitter <- &Emit{
+					User_slug: subscriber,
+				}
+			}
+
 		}
-	
+	}
+
 }

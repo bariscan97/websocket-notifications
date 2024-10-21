@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-    "github.com/go-redis/redis/v8"
+
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 )
 
@@ -13,13 +14,13 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	
+
 	addr := fmt.Sprintf(
 		"%s:%s",
 		os.Getenv("REDIS_HOST"),
 		os.Getenv("REDIS_PORT"),
 	)
-	
+
 	client := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})
@@ -28,7 +29,7 @@ func main() {
 
 	hub := NewHub(cache)
 
-    wsHandler := NewHandler(hub)
+	wsHandler := NewHandler(hub)
 
 	InitRouter(wsHandler)
 

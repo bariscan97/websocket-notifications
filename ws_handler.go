@@ -2,13 +2,14 @@ package main
 
 import (
 	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"strconv"
 )
 
 type Handler struct {
-	hub   *Hub
+	hub *Hub
 }
 
 func NewHandler(h *Hub) *Handler {
@@ -53,14 +54,13 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 	})
 }
 
-
 func (h *Handler) JoinWs(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	userSlug := c.Param("slug")
 
 	cl := &Client{
