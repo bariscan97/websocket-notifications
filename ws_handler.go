@@ -27,7 +27,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func (h *Handler) GetNotifications(c *gin.Context) {
-	username := c.Param("username")
+	username := c.Param("slug")
 
 	page := c.Query("page")
 

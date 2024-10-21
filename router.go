@@ -26,7 +26,7 @@ func InitRouter(wsHandler *Handler) {
 		MaxAge: 12 * time.Hour,
 	}))
 
-	r.GET("/ws/unreadcount/:username", wsHandler.GetNotifications)
+	r.GET("/ws/unreadcount/:slug", wsHandler.GetNotifications)
 	r.GET("/ws/:username", wsHandler.JoinWs)
 
 }
