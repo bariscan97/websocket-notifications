@@ -1,8 +1,7 @@
-package router
+package main
 
 import (
 	"fmt"
-	"notifications/ws"
 	"time"
 	"os"
 	"github.com/gin-contrib/cors"
@@ -11,7 +10,7 @@ import (
 
 var r *gin.Engine
 
-func InitRouter(wsHandler *ws.Handler) {
+func InitRouter(wsHandler *Handler) {
 	r = gin.Default()
 	port := os.Getenv("PORT")
 	r.Use(cors.New(cors.Config{

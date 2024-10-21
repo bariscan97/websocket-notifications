@@ -3,13 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"notifications/cacherepo"
-	"notifications/router"
-	"notifications/worker"
-	"notifications/ws"
 	"os"
-
-	"github.com/go-redis/redis/v8"
+    "github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 )
 
@@ -29,17 +24,17 @@ func main() {
 		Addr: addr,
 	})
 
-	hub := ws.NewHub()
+	cache := NewCacheClient(client)
 
-	wsHandler := ws.NewHandler(hub)
+	hub := NewHub(cache)
 
-	router.InitRouter(wsHandler)
+    wsHandler := NewHandler(hub)
 
-	cache := cacherepo.NewCacheClient(client)
+	InitRouter(wsHandler)
 
-	go worker.Worker(cache, hub)
+	go Worker(cache, hub)
 
 	go hub.Run()
 
-	router.Start(fmt.Sprintf("0.0.0.0:%s", os.Getenv("PORT")))
+	Start(fmt.Sprintf("0.0.0.0:%s", os.Getenv("PORT")))
 }

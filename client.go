@@ -1,9 +1,8 @@
-package ws
+package main
 
 import (
 	"log"
 	"time"
-
 	"github.com/gorilla/websocket"
 )
 
@@ -27,25 +26,29 @@ type Client struct {
 	Username string `json:"username"`
 }
 
-type Message struct {
-	UnreadCount string
-	Username    string
-}
-
 func (c *Client) writeMessage() {
+	ticker := time.NewTicker(pingPeriod)
 	defer func() {
+		ticker.Stop()
 		c.Conn.Close()
 	}()
-
-	for {
-		message, ok := <-c.Message
-		
-		if !ok {
-			return
+	loop:
+		for {
+			select {
+			case message, ok := <-c.Message:
+				c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if !ok {
+					c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+					break loop
+				}
+				c.Conn.WriteJSON(message)
+			case <-ticker.C:
+				c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					break loop
+				}
+			} 
 		}
-
-		c.Conn.WriteJSON(message)
-	}
 }
 
 func (c *Client) readMessage(hub *Hub) {

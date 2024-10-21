@@ -1,17 +1,14 @@
-package ws
+package main
 
 import (
 	"net/http"
-	"notifications/cacherepo"
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"strconv"
 )
 
 type Handler struct {
 	hub   *Hub
-	cache cacherepo.IRedisClient
 }
 
 func NewHandler(h *Hub) *Handler {
@@ -40,7 +37,8 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 		})
 		return
 	}
-	results, err := h.cache.GetNotifications(username, page)
+
+	results, err := h.hub.Cache.GetNotifications(username, page)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -48,12 +46,13 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 		return
 	}
 
-	h.cache.ResetUnreadCount(username)
+	h.hub.Cache.ResetUnreadCount(username)
 
 	c.JSON(http.StatusOK, gin.H{
 		"notifications": results,
 	})
 }
+
 
 func (h *Handler) JoinWs(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -61,24 +60,16 @@ func (h *Handler) JoinWs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	username := c.Param("username")
+	
+	userSlug := c.Param("slug")
 
 	cl := &Client{
 		Conn:     conn,
 		Message:  make(chan *Message, 10),
-		Username: username,
+		Username: userSlug,
 	}
 
-	m := &Message{
-		UnreadCount: h.cache.GetUnreadCount(username),
-		Username:    username,
-	}
-	
-	
-	h.hub.Clients[username] = cl
-
-	cl.Message <- m
+	h.hub.Register <- cl
 
 	go cl.writeMessage()
 	go cl.readMessage(h.hub)
