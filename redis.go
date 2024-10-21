@@ -65,7 +65,7 @@ func (redisCli *RedisClient) GetNotifications(username string, page string) ([]m
 		if ok {
 			for j := 0; j < len(doc); j += 2 {
 				key, _ := doc[j].(string)
-				value, _ := doc[j+1].(string)
+				value, _ := doc[j+1].(interface{})
 				notification[key] = value
 			}
 			notifications = append(notifications, notification)
