@@ -89,8 +89,7 @@ func (redisCli *RedisClient) IncUnreadCount(username string) error {
 	if err != nil {
 		return err
 	}
-	num++
-	redisCli.Rdb.Set(ctx, key, num, 0)
+	redisCli.Rdb.Set(ctx, key, num + 1, 0)
 	return nil
 }
 
@@ -113,40 +112,40 @@ func (redisCli *RedisClient) NotifyQueue(hub *Hub) {
 		ticker.Stop()
 		os.Exit(1)
 	}()
-loop:
-	for {
-		select {
+	loop:
+		for {
+			select {
 
-		case <-ticker.C:
-			if err := redisCli.Rdb.Ping(context.Background()).Err(); err != nil {
-				log.Printf("Error:  %v", err)
-				break loop
-			}
-
-		case msg, ok := <-redisCli.Queue:
-			if !ok {
-				log.Println("QueueMessage channel closed")
-				break loop
-			}
-			var subscribers []string
-			subscribers, err := redisCli.GetSubsByUsername(msg.From)
-			if err != nil {
-				log.Printf("Error while getting subscribers %v", err)
-				continue
-			}
-			for _, subscriber := range subscribers {
-				redisCli.CreateNotification(map[string]interface{}{
-					"username": subscriber,
-					"from":     msg.From,
-					"content":  msg.Content,
-				})
-
-				hub.Emitter <- &Emit{
-					User_slug: subscriber,
+			case <-ticker.C:
+				if err := redisCli.Rdb.Ping(context.Background()).Err(); err != nil {
+					log.Printf("Error:  %v", err)
+					break loop
 				}
-			}
 
+			case msg, ok := <-redisCli.Queue:
+				if !ok {
+					log.Println("QueueMessage channel closed")
+					break loop
+				}
+				var subscribers []string
+				subscribers, err := redisCli.GetSubsByUsername(msg.From)
+				if err != nil {
+					log.Printf("Error while getting subscribers %v", err)
+					continue
+				}
+				for _, subscriber := range subscribers {
+					redisCli.CreateNotification(map[string]interface{}{
+						"username": subscriber,
+						"from":     msg.From,
+						"content":  msg.Content,
+					})
+
+					hub.Emitter <- &Emit{
+						User_slug: subscriber,
+					}
+				}
+
+			}
 		}
-	}
 
 }

@@ -77,20 +77,24 @@ func Worker(cache *RedisClient, hub *Hub) {
 
 	go cache.NotifyQueue(hub)
 
-	for msg := range msgs {
+	go func() {
+		for msg := range msgs {
 
-		var queueMessage QueueMessage
-		err := json.Unmarshal(msg.Body, &queueMessage)
-		if err != nil {
-			log.Printf("Failed to unmarshal JSON: %v", err)
-			continue
+			var queueMessage QueueMessage
+			err := json.Unmarshal(msg.Body, &queueMessage)
+			if err != nil {
+				log.Printf("Failed to unmarshal JSON: %v", err)
+				continue
+			}
+	
+			cache.Queue <- &queueMessage
+	
+			msg.Ack(true)
+	
+			fmt.Printf("Received a message: %+v\n", queueMessage)
 		}
+	}()
 
-		cache.Queue <- &queueMessage
-
-		msg.Ack(true)
-
-		fmt.Printf("Received a message: %+v\n", queueMessage)
-	}
+	select{}
 
 }

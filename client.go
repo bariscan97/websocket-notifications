@@ -29,23 +29,23 @@ func (c *Client) writeMessage() {
 		ticker.Stop()
 		c.Conn.Close()
 	}()
-loop:
-	for {
-		select {
-		case message, ok := <-c.Message:
-			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-				break loop
-			}
-			c.Conn.WriteJSON(message)
-		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				break loop
+	loop:
+		for {
+			select {
+			case message, ok := <-c.Message:
+				c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if !ok {
+					c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+					break loop
+				}
+				c.Conn.WriteJSON(message)
+			case <-ticker.C:
+				c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					break loop
+				}
 			}
 		}
-	}
 }
 
 func (c *Client) readMessage(hub *Hub) {
