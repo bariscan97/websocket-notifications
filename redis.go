@@ -65,7 +65,7 @@ func (redisCli *RedisClient) GetNotifications(username string, page string) ([]m
 		if ok {
 			for j := 0; j < len(doc); j += 2 {
 				key, _ := doc[j].(string)
-				value, _ := doc[j+1].(interface{})
+				value, _ := doc[j+1].(string)
 				notification[key] = value
 			}
 			notifications = append(notifications, notification)
@@ -100,22 +100,28 @@ func (redisCli *RedisClient) ResetUnreadCount(username string) error {
 	return err.Err()
 }
 
-func (redisCli *RedisClient) GetSubsByUsername(username string) ([]string, error) {
-	ctx := context.Background()
+func (redisCli *RedisClient) GetSubsByUsername(username string, ctx context.Context) ([]string, error) {
 	key := fmt.Sprintf("subs:%s", username)
 	return redisCli.Rdb.SMembers(ctx, key).Result()
 }
 
 func (redisCli *RedisClient) NotifyQueue(hub *Hub) {
+	
 	ticker := time.NewTicker(30 * time.Second)
+	
+	ctx, cancel := context.WithTimeout(context.Background(), 3500*time.Millisecond)
+    
 	defer func() {
+		cancel()
 		ticker.Stop()
 		os.Exit(1)
 	}()
+	
 	loop:
 		for {
 			select {
-
+			case <- ctx.Done():
+				break loop
 			case <-ticker.C:
 				if err := redisCli.Rdb.Ping(context.Background()).Err(); err != nil {
 					log.Printf("Error:  %v", err)
@@ -128,21 +134,24 @@ func (redisCli *RedisClient) NotifyQueue(hub *Hub) {
 					break loop
 				}
 				var subscribers []string
-				subscribers, err := redisCli.GetSubsByUsername(msg.From)
+				
+				subscribers, err := redisCli.GetSubsByUsername(msg.From, ctx)
 				if err != nil {
 					log.Printf("Error while getting subscribers %v", err)
 					continue
 				}
 				for _, subscriber := range subscribers {
-					redisCli.CreateNotification(map[string]interface{}{
-						"username": subscriber,
-						"from":     msg.From,
-						"content":  msg.Content,
-					})
-
-					hub.Emitter <- &Emit{
-						User_slug: subscriber,
-					}
+					go func(sub string) {
+						redisCli.CreateNotification(map[string]interface{}{
+							"username": subscriber,
+							"from":     msg.From,
+							"content":  msg.Content,
+						})
+	
+						hub.Emitter <- &Emit{
+							User_slug: subscriber,
+						}
+					}(subscriber)
 				}
 
 			}
